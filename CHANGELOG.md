@@ -1,3 +1,3 @@
-## 1.0.0
+## 0.0.1
 
-- Initial version.
+- Feature: Added MyJDownloader client to handle link addition through the official API.

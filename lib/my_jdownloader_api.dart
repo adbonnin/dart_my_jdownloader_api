@@ -1,8 +1,7 @@
-/// Support for doing something awesome.
-///
-/// More dartdocs go here.
-library;
+library my_jdownloader_api;
 
-export 'src/my_jdownloader_api_base.dart';
-
-// TODO: Export any libraries intended for clients of this package.
+export 'src/api.dart';
+export 'src/cipher.dart';
+export 'src/client.dart';
+export 'src/models/_models.dart';
+export 'src/session.dart';

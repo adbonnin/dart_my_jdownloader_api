@@ -1,14 +1,16 @@
 name: my_jdownloader_api
-description: A starting point for Dart libraries or applications.
-version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+description: A Dart client for the MyJDownloader API.
+version: 0.0.1
+repository: https://github.com/adbonnin/dart_my_jdownloader_api
 
 environment:
-  sdk: ^3.10.0-290.4.beta
+  sdk: ">=2.17.0 <4.0.0"
 
-# Add regular dependencies here.
 dependencies:
-  # path: ^1.9.0
+  convert: ">=3.0.0 <4.0.0"
+  crypto: ">=3.0.0 <4.0.0"
+  encrypt: ">=5.0.0 <6.0.0"
+  http: ">=0.13.0 <2.0.0"
 
 dev_dependencies:
   lints: ^6.0.0

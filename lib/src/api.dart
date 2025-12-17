@@ -3,14 +3,12 @@ import 'package:my_jdownloader_api/src/models/_models.dart';
 import 'package:my_jdownloader_api/src/models/download_link.dart';
 
 class Api {
-  Api(Client client)
-      : _client = client,
-        downloads = DownloadsApi(client),
-        linkGrabber = LinkGrabberApi(client);
+  Api(Client client) : _client = client;
 
   final Client _client;
-  final DownloadsApi downloads;
-  final LinkGrabberApi linkGrabber;
+
+  late final downloads = DownloadsApi(_client);
+  late final linkGrabber = LinkGrabberApi(_client);
 
   Future<List<Device>> listDevices() async {
     final json = await _client.sendServerRequest('/my/listdevices');
@@ -19,25 +17,33 @@ class Api {
 }
 
 class DownloadsApi {
-  const DownloadsApi(Client client) //
-      : _client = client;
+  const DownloadsApi(Client client) : _client = client;
 
   final Client _client;
 
   Future<List<DownloadLink>> queryLinks(String deviceId) async {
-    final json = await _client.sendDeviceRequest(deviceId, '/downloadsV2/queryLinks', params: {});
+    final json = await _client.sendDeviceRequest(
+      deviceId,
+      '/downloadsV2/queryLinks',
+      params: {},
+    );
+
     return DownloadLink.fromJsonList(json);
   }
 }
 
 class LinkGrabberApi {
-  const LinkGrabberApi(Client client) //
-      : _client = client;
+  const LinkGrabberApi(Client client) : _client = client;
 
   final Client _client;
 
   Future<List<DownloadLink>> queryLinks(String deviceId) async {
-    final json = await _client.sendDeviceRequest(deviceId, '/linkgrabberv2/queryLinks', params: {});
+    final json = await _client.sendDeviceRequest(
+      deviceId,
+      '/linkgrabberv2/queryLinks',
+      params: {},
+    );
+
     return DownloadLink.fromJsonList(json);
   }
 

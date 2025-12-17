@@ -7,21 +7,21 @@ import 'package:my_jdownloader_api/src/session.dart';
 import 'package:my_jdownloader_api/src/utils/http.dart';
 
 final _utf8Json = json.fuse(utf8);
-final _jdownloaderApiUrl = Uri.parse('https://api.jdownloader.org');
+final _jdownloaderApiBaseUri = Uri.parse('https://api.jdownloader.org');
 
 class Client {
   Client({
-    Uri? baseUrl,
+    Uri? baseUri,
     required SessionHandler session,
     http.Client? httpClient,
-  })  : _baseUrl = baseUrl ?? _jdownloaderApiUrl,
+  })  : _baseUri = baseUri ?? _jdownloaderApiBaseUri,
         _session = session,
         _httpClient = httpClient;
 
   factory Client.fromCredentials(
     String email,
     String password, {
-    Uri? baseUrl,
+    Uri? baseUri,
     int? apiVersion,
     String? appKey,
     http.Client? httpClient,
@@ -33,13 +33,13 @@ class Client {
     );
 
     return Client(
-      baseUrl: baseUrl,
+      baseUri: baseUri,
       session: effectiveSession,
       httpClient: httpClient,
     );
   }
 
-  final Uri _baseUrl;
+  final Uri _baseUri;
   SessionHandler _session;
   http.Client? _httpClient;
 
@@ -75,26 +75,26 @@ class Client {
   }) async {
     final requestId = Client.nextRequestId();
 
-    var url = _baseUrl.replace(
-      pathSegments: _baseUrl.pathSegmentsFollowedBy(path),
+    var uri = _baseUri.replace(
+      pathSegments: _baseUri.pathSegmentsFollowedBy(path),
       queryParameters: {
-        ..._baseUrl.queryParameters,
+        ..._baseUri.queryParameters,
         if (queryParameters != null) ...queryParameters,
         'rid': '$requestId',
       },
     );
 
-    final requestTarget = url.requestTarget;
+    final requestTarget = uri.requestTarget;
     final signature = cipher.sign(requestTarget);
 
-    url = url.replace(
+    uri = uri.replace(
       queryParameters: {
-        ...url.queryParameters,
+        ...uri.queryParameters,
         'signature': signature,
       },
     );
 
-    final response = await (_httpClient?.post ?? http.post)(url);
+    final response = await (_httpClient?.post ?? http.post)(uri);
     ApiException.checkResponse(response);
 
     final responseBody = cipher.decodeBase64(response.body);
@@ -125,11 +125,11 @@ class Client {
     final encryptedBody = session.deviceCipher.encodeBase64(_utf8Json.encode(body));
     final target = 't_${session.sessionToken}_$deviceId$path';
 
-    final url = _baseUrl.replace(
-      pathSegments: _baseUrl.pathSegmentsFollowedBy(target),
+    final uri = _baseUri.replace(
+      pathSegments: _baseUri.pathSegmentsFollowedBy(target),
     );
 
-    final response = await (_httpClient?.post ?? http.post)(url, body: encryptedBody);
+    final response = await (_httpClient?.post ?? http.post)(uri, body: encryptedBody);
     ApiException.checkResponse(response);
 
     final responseBody = session.deviceCipher.decodeBase64(response.body);

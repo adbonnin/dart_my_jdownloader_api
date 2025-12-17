@@ -11,7 +11,7 @@ class Api {
   late final linkGrabber = LinkGrabberApi(_client);
 
   Future<List<Device>> listDevices() async {
-    final json = await _client.sendServerRequest('/my/listdevices');
+    final json = await _client.sendToServer('/my/listdevices');
     return Device.fromJsonList(json['list'] as List<dynamic>);
   }
 }
@@ -22,7 +22,7 @@ class DownloadsApi {
   final Client _client;
 
   Future<List<DownloadLink>> queryLinks(String deviceId) async {
-    final json = await _client.sendDeviceRequest(
+    final json = await _client.sendToDevice(
       deviceId,
       '/downloadsV2/queryLinks',
       params: {},
@@ -38,7 +38,7 @@ class LinkGrabberApi {
   final Client _client;
 
   Future<List<DownloadLink>> queryLinks(String deviceId) async {
-    final json = await _client.sendDeviceRequest(
+    final json = await _client.sendToDevice(
       deviceId,
       '/linkgrabberv2/queryLinks',
       params: {},
@@ -63,7 +63,7 @@ class LinkGrabberApi {
     String? priority,
     String? sourceUrl,
   }) async {
-    final json = await _client.sendDeviceRequest<Map<String, dynamic>>(
+    final json = await _client.sendToDevice<Map<String, dynamic>>(
       deviceId,
       '/linkgrabberv2/addLinks',
       params: {

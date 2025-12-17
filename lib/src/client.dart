@@ -48,7 +48,7 @@ class Client {
     return (rand.nextDouble() * 1e13).floor();
   }
 
-  Future<Map<String, dynamic>> sendServerRequest(
+  Future<Map<String, dynamic>> sendToServer(
     String path, {
     Map<String, dynamic>? queryParameters,
   }) async {
@@ -58,7 +58,7 @@ class Client {
       session = await refreshSession();
     }
 
-    return _sendServerRequest(
+    return _sendToServer(
       session.serverCipher,
       path,
       queryParameters: {
@@ -68,7 +68,7 @@ class Client {
     );
   }
 
-  Future<Map<String, dynamic>> _sendServerRequest(
+  Future<Map<String, dynamic>> _sendToServer(
     Cipher cipher,
     String path, {
     Map<String, dynamic>? queryParameters,
@@ -101,7 +101,7 @@ class Client {
     return _utf8Json.decode(responseBody) as Map<String, dynamic>;
   }
 
-  Future<T> sendDeviceRequest<T>(
+  Future<T> sendToDevice<T>(
     String deviceId,
     String path, {
     int apiVersion = 1,
@@ -143,7 +143,7 @@ class Client {
   Future<Session> refreshSession() async {
     if (_refreshingFuture == null) {
       try {
-        _refreshingFuture = _session.refresh(_sendServerRequest);
+        _refreshingFuture = _session.refresh(_sendToServer);
         return _session = await _refreshingFuture!;
       } //
       finally {
@@ -156,7 +156,7 @@ class Client {
   }
 
   Future<void> close() async {
-    await _session.disconnect(_sendServerRequest);
+    await _session.disconnect(_sendToServer);
     _httpClient?.close();
     _httpClient = null;
   }

@@ -1,3 +1,5 @@
+part of '_models.dart';
+
 class DownloadLink {
   const DownloadLink({
     required this.name,
@@ -15,5 +17,5 @@ class DownloadLink {
         uuid = json['uuid'] as int;
 
   static List<DownloadLink> fromJsonList(List<dynamic> list) => //
-      list.map((e) => DownloadLink.fromJson(e as Map<String, dynamic>)).toList();
+      list.map((e) => DownloadLink.fromJson(e)).toList();
 }

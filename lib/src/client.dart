@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:http/http.dart' as http;
-import 'package:my_jdownloader_api/src/cipher.dart';
+import 'package:my_jdownloader_api/src/models/_models.dart';
 import 'package:my_jdownloader_api/src/session.dart';
 import 'package:my_jdownloader_api/src/utils/http.dart';
 
@@ -44,32 +44,29 @@ class Client {
   http.Client? _httpClient;
 
   static int nextRequestId() {
-    final rand = Random();
+    final rand = math.Random();
     return (rand.nextDouble() * 1e13).floor();
   }
 
   Future<Map<String, dynamic>> sendToServer(
     String path, {
     Map<String, dynamic>? queryParameters,
-  }) async {
-    var session = _session;
-
-    if (session is! Session) {
-      session = await refreshSession();
-    }
-
-    return _sendToServer(
-      session.serverCipher,
-      path,
-      queryParameters: {
-        if (queryParameters != null) ...queryParameters,
-        'sessiontoken': session.sessionToken,
-      },
+    int? maxRetries,
+  }) {
+    return _retryWithSessionRefresh(
+      (session) => _sendToServer(
+        session,
+        path,
+        queryParameters: {
+          if (queryParameters != null) ...queryParameters,
+          'sessiontoken': session.sessionToken,
+        },
+      ),
     );
   }
 
   Future<Map<String, dynamic>> _sendToServer(
-    Cipher cipher,
+    SessionHandler session,
     String path, {
     Map<String, dynamic>? queryParameters,
   }) async {
@@ -85,7 +82,7 @@ class Client {
     );
 
     final requestTarget = uri.requestTarget;
-    final signature = cipher.sign(requestTarget);
+    final signature = session.serverCipher.sign(requestTarget);
 
     uri = uri.replace(
       queryParameters: {
@@ -97,26 +94,39 @@ class Client {
     final response = await (_httpClient?.post ?? http.post)(uri);
     ApiException.checkResponse(response);
 
-    final responseBody = cipher.decodeBase64(response.body);
+    final responseBody = session.serverCipher.decodeBase64(response.body);
     return _utf8Json.decode(responseBody) as Map<String, dynamic>;
   }
 
   Future<T> sendToDevice<T>(
     String deviceId,
     String path, {
-    int apiVersion = 1,
+    int? apiVersion,
+    Map<String, dynamic>? params,
+    int? maxRetries,
+  }) {
+    return _retryWithSessionRefresh(
+      (session) => _sendToDevice(
+        session,
+        deviceId,
+        path,
+        apiVersion: apiVersion,
+        params: params,
+      ),
+    );
+  }
+
+  Future<T> _sendToDevice<T>(
+    Session session,
+    String deviceId,
+    String path, {
+    int? apiVersion,
     Map<String, dynamic>? params,
   }) async {
-    var session = _session;
-
-    if (session is! Session) {
-      session = await refreshSession();
-    }
-
     final requestId = Client.nextRequestId();
 
     final body = {
-      'apiVer': apiVersion,
+      'apiVer': apiVersion ?? 1,
       'rid': requestId,
       'url': path,
       if (params != null) 'params': [jsonEncode(params)],
@@ -138,20 +148,52 @@ class Client {
     return decodedBody['data'] as T;
   }
 
-  Future<Session>? _refreshingFuture;
+  Future<T> _retryWithSessionRefresh<T>(Future<T> Function(Session session) operation) async {
+    var session = _session is Session //
+        ? _session as Session
+        : await refreshSession();
+
+    var attempt = 0;
+
+    while (true) {
+      try {
+        return await operation(session);
+      } //
+      on ApiException catch (e) {
+        attempt++;
+        final canRetry = e.isInvalidToken && attempt < 2;
+
+        if (!canRetry) {
+          rethrow;
+        }
+
+        session = await refreshSession();
+      } //
+      catch (e) {
+        rethrow;
+      }
+    }
+  }
+
+  Future<Session>? _currentRefresh;
 
   Future<Session> refreshSession() async {
-    if (_refreshingFuture == null) {
-      try {
-        _refreshingFuture = _session.refresh(_sendToServer);
-        return _session = await _refreshingFuture!;
-      } //
-      finally {
-        _refreshingFuture = null;
-      }
+    final currentRefresh = _currentRefresh;
+
+    if (currentRefresh != null) {
+      return currentRefresh;
+    }
+
+    final refreshFuture = _session.refresh(_sendToServer);
+    _currentRefresh = refreshFuture;
+
+    try {
+      return _session = await refreshFuture;
     } //
-    else {
-      return _refreshingFuture!;
+    finally {
+      if (_currentRefresh == refreshFuture) {
+        _currentRefresh = null;
+      }
     }
   }
 
@@ -166,23 +208,47 @@ class ApiException implements Exception {
   const ApiException(
     this.url,
     this.statusCode,
-    this.reasonPhrase,
-  );
+    this.reasonPhrase, {
+    this.error,
+    this.errorSrc,
+    this.errorType,
+  });
 
   final Uri? url;
   final int statusCode;
   final String? reasonPhrase;
+  final String? error;
+  final String? errorSrc;
+  final String? errorType;
+
+  bool get isInvalidToken => errorType == 'TOKEN_INVALID';
 
   factory ApiException.fromResponse(http.Response response) {
+    final body = response.body;
+    ErrorResponse? errorResponse;
+
+    if (body.isNotEmpty) {
+      try {
+        final json = jsonDecode(body);
+        errorResponse = ErrorResponse.fromJson(json);
+      } //
+      catch (e) {
+        // Failed to parse error;
+      }
+    }
+
     return ApiException(
       response.request?.url,
       response.statusCode,
       response.reasonPhrase,
+      error: body.isEmpty ? null : body,
+      errorSrc: errorResponse?.src,
+      errorType: errorResponse?.type,
     );
   }
 
   @override
-  String toString() => 'ApiException($statusCode, $reasonPhrase, url: $url)';
+  String toString() => 'ApiException($statusCode, $reasonPhrase, url: $url, error: $error)';
 
   static void checkResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 400) {

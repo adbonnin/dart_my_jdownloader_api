@@ -14,8 +14,8 @@ class Device {
   Device.fromJson(Map<String, dynamic> json)
       : id = json['id'] as String,
         name = json['name'] as String,
-        status = json['status'] as String? ?? 'UNKNOWN';
+        status = json['status'] as String;
 
   static List<Device> fromJsonList(List<dynamic> list) => //
-      list.map((e) => Device.fromJson(e as Map<String, dynamic>)).toList();
+      list.map((e) => Device.fromJson(e)).toList();
 }

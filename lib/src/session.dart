@@ -4,7 +4,7 @@ import 'package:my_jdownloader_api/src/cipher.dart';
 import 'package:my_jdownloader_api/src/models/_models.dart';
 
 typedef RequestSender = Future<Map<String, dynamic>> Function(
-  Cipher cipher,
+  SessionHandler session,
   String path, {
   Map<String, dynamic>? queryParameters,
 });
@@ -47,7 +47,7 @@ class InitialSessionHandler implements SessionHandler {
   @override
   Future<Session> refresh(RequestSender send) async {
     final json = await send(
-      serverCipher,
+      this,
       '/my/connect',
       queryParameters: {
         'appkey': appKey,
@@ -95,7 +95,7 @@ class Session implements SessionHandler {
   @override
   Future<Session> refresh(RequestSender send) async {
     final json = await send(
-      serverCipher,
+      this,
       '/my/reconnect',
       queryParameters: {
         'appkey': appKey,
@@ -119,7 +119,7 @@ class Session implements SessionHandler {
   @override
   Future<void> disconnect(RequestSender send) {
     return send(
-      serverCipher,
+      this,
       '/my/disconnect',
       queryParameters: {
         'sessiontoken': sessionToken,

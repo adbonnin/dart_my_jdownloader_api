@@ -1,6 +1,5 @@
 import 'package:my_jdownloader_api/src/client.dart';
 import 'package:my_jdownloader_api/src/models/_models.dart';
-import 'package:my_jdownloader_api/src/models/download_link.dart';
 
 class Api {
   Api(Client client) : _client = client;

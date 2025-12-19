@@ -19,15 +19,15 @@ abstract class SessionHandler {
   Future<void> disconnect(RequestSender send);
 }
 
-class InitialSessionHandler implements SessionHandler {
-  const InitialSessionHandler({
+class InitialSession implements SessionHandler {
+  const InitialSession({
     required this.appKey,
     required this.email,
     required this.serverCipher,
     required this.deviceCipher,
   });
 
-  InitialSessionHandler.fromCredentials(
+  InitialSession.fromCredentials(
     this.email,
     String password, {
     String? appKey,

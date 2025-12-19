@@ -12,10 +12,10 @@ final _jdownloaderApiBaseUri = Uri.parse('https://api.jdownloader.org');
 class Client {
   Client({
     Uri? baseUri,
-    required SessionHandler session,
+    required InitialSession initialSession,
     http.Client? httpClient,
   })  : _baseUri = baseUri ?? _jdownloaderApiBaseUri,
-        _session = session,
+        _initialSession = initialSession,
         _httpClient = httpClient;
 
   factory Client.fromCredentials(
@@ -26,7 +26,7 @@ class Client {
     String? appKey,
     http.Client? httpClient,
   }) {
-    final effectiveSession = InitialSessionHandler.fromCredentials(
+    final initialSession = InitialSession.fromCredentials(
       email,
       password,
       appKey: appKey,
@@ -34,13 +34,14 @@ class Client {
 
     return Client(
       baseUri: baseUri,
-      session: effectiveSession,
+      initialSession: initialSession,
       httpClient: httpClient,
     );
   }
 
   final Uri _baseUri;
-  SessionHandler _session;
+  final InitialSession _initialSession;
+  Session? _session;
   http.Client? _httpClient;
 
   static int nextRequestId() {
@@ -149,10 +150,7 @@ class Client {
   }
 
   Future<T> _retryWithSessionRefresh<T>(Future<T> Function(Session session) operation) async {
-    var session = _session is Session //
-        ? _session as Session
-        : await refreshSession();
-
+    var session = _session ?? await refreshSession();
     var attempt = 0;
 
     while (true) {
@@ -161,13 +159,20 @@ class Client {
       } //
       on ApiException catch (e) {
         attempt++;
-        final canRetry = e.isInvalidToken && attempt < 2;
+
+        final isInvalidToken = e.isInvalidToken;
+        final canRetry = (isInvalidToken || e.isAuthFailed) && attempt < 2;
 
         if (!canRetry) {
           rethrow;
         }
 
-        session = await refreshSession();
+        if (isInvalidToken) {
+          session = await refreshSession();
+        } //
+        else {
+          session = await refreshSession(init: true);
+        }
       } //
       catch (e) {
         rethrow;
@@ -177,14 +182,15 @@ class Client {
 
   Future<Session>? _currentRefresh;
 
-  Future<Session> refreshSession() async {
+  Future<Session> refreshSession({bool init = false}) async {
     final currentRefresh = _currentRefresh;
 
     if (currentRefresh != null) {
       return currentRefresh;
     }
 
-    final refreshFuture = _session.refresh(_sendToServer);
+    final usedSession = init ? _initialSession : (_session ?? _initialSession);
+    final refreshFuture = usedSession.refresh(_sendToServer);
     _currentRefresh = refreshFuture;
 
     try {
@@ -198,7 +204,7 @@ class Client {
   }
 
   Future<void> close() async {
-    await _session.disconnect(_sendToServer);
+    await _session?.disconnect(_sendToServer);
     _httpClient?.close();
     _httpClient = null;
   }
@@ -222,6 +228,8 @@ class ApiException implements Exception {
   final String? errorType;
 
   bool get isInvalidToken => errorType == 'TOKEN_INVALID';
+
+  bool get isAuthFailed => errorType == 'AUTH_FAILED';
 
   factory ApiException.fromResponse(http.Response response) {
     final body = response.body;

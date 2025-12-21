@@ -1,6 +1,6 @@
 name: my_jdownloader_api
 description: A Dart client for the MyJDownloader API.
-version: 0.0.1
+version: 0.0.2
 repository: https://github.com/adbonnin/dart_my_jdownloader_api
 
 environment:
